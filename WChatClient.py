@@ -1,13 +1,11 @@
 __author__ = 'wybe'
 
 
-import socket
 import tkinter as tk
 from tkinter import ttk
 
 
-ENCODING = "utf-8"  # Text encoding to use
-BUFFER = 4096  # Buffer length
+PORT = 25565  # Default port
 
 
 # ------------------- SettingsBar --------------------
@@ -20,23 +18,32 @@ class SettingsBar(ttk.Frame):
         self.columnconfigure(3, weight=1)
         self.rowconfigure(0, weight=1)
 
+        # ---- Tk variables ----
+        self.ip = tk.StringVar()
+        self.port = tk.StringVar()
+        self.name = tk.StringVar()
+
         # ---- Add gui parts ----
+        # Ip
         self.label_ip = ttk.Label(self, text="Host:")
         self.label_ip.grid(column=0, row=0, sticky="w")
 
-        self.entry_ip = ttk.Entry(self)
+        self.entry_ip = ttk.Entry(self, textvariable=self.ip)
         self.entry_ip.grid(column=1, row=0, sticky="we")
 
+        # Port
         self.label_port = ttk.Label(self, text="Port:")
         self.label_port.grid(column=2, row=0)
 
-        self.entry_port = ttk.Entry(self)
+        self.entry_port = ttk.Entry(self, textvariable=self.port)
         self.entry_port.grid(column=3, row=0, sticky="we")
+        self.port.set(str(PORT))  # Set default port
 
+        # Name
         self.label_name = ttk.Label(self, text="Name:")
         self.label_name.grid(column=0, row=1, sticky="w")
 
-        self.entry_name = ttk.Entry(self)
+        self.entry_name = ttk.Entry(self, textvariable=self.name)
         self.entry_name.grid(column=1, row=1, columnspan=3, sticky="we")
 
         self.button_connect = ttk.Button(self, text="Connect")
@@ -72,12 +79,6 @@ class ChatWindow(ttk.Frame):
 
         # This is important for the scrolling! (no idea why it doesn't work without)
         self.frame_output.bind("<Configure>", self.onframeconfigure)
-
-        # Test stuff inside frame
-        for i in range(50):
-            ttk.Label(self.frame_output, text=i, style="White.TLabel").grid(row=i, column=0)
-            ttk.Label(self.frame_output, text="my text"+str(i), style="White.TLabel").grid(row=i, column=1)
-            ttk.Label(self.frame_output, text="..........", style="White.TLabel").grid(row=i, column=2)
 
     def onframeconfigure(self, event):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))

@@ -26,8 +26,10 @@ def recvall(sock, length):
 
 def get(sock):
     lendata = recvall(sock, form.size)
-    if lendata == 0:
+    if lendata == 0:  # Connection is closed
         return 0
+    elif lendata == b'\x00\x00\x00\x00':  # End of message
+        return '\x00\x00\x00\x00'
     (length,) = form.unpack(lendata)
     message = recvall(sock, length)
     return message.decode(ENCODING)
@@ -36,3 +38,10 @@ def get(sock):
 def put(sock, message):
     message = message.encode(ENCODING)
     sock.send(form.pack(len(message)) + message)
+
+
+def put_tuple(sock, message):
+    for part in message:
+        put(sock, part)
+    put(sock, '')
+    return

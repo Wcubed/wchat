@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import ttk
 import socket
 import select
-from datetime import datetime
+import time
 
 import protocol as prot
 
@@ -121,24 +121,28 @@ class ChatWindow(ttk.Frame):
         self.canvas.config(width=event.width)
         self.canvas.itemconfig(self.frame_window, width=self.canvas["width"])
 
+    def to_bottom(self):
+        self.canvas.update()
+        self.canvas.yview_moveto(1)
+
     def put_separator(self):
         sep = ttk.Separator(self.frame_output, orient="horizontal")
         sep.grid(sticky="ew")
-        #self.canvas.yview()
+        self.to_bottom()
 
     def put_info(self, info):
         label = ttk.Label(self.frame_output, text=info, style="Info.TLabel")
         label.grid()
         self.last_frame = None
         self.last_name = None
-        #self.canvas.yview()
+        self.to_bottom()
 
     def put_error(self, error):
         label = ttk.Label(self.frame_output, text=error, style="Error.TLabel")
         label.grid()
         self.last_frame = None
         self.last_name = None
-        #self.canvas.yview()
+        self.to_bottom()
 
     def put_message(self, name, message):
         if self.last_name != name:
@@ -152,9 +156,9 @@ class ChatWindow(ttk.Frame):
             line_frame.grid(sticky="ew")
             line_frame.columnconfigure(3, weight=1)
 
-            time = datetime.now().time()
+            timestr = time.strftime("%I:%M:%S")
 
-            time_label = ttk.Label(line_frame, text="["+str(time.hour)+":"+str(time.minute)+":"+str(time.second)+"]", style="Time.TLabel")
+            time_label = ttk.Label(line_frame, text="[" + timestr + "]", style="Time.TLabel")
             time_label.grid()
 
             name_label = ttk.Label(line_frame, text=name + ":", style="Info.TLabel")
@@ -167,9 +171,9 @@ class ChatWindow(ttk.Frame):
             line_frame.grid(sticky="ew")
             line_frame.columnconfigure(2, weight=1)
 
-            time = datetime.now().time()
+            timestr = time.strftime("%I:%M:%S")
 
-            time_label = ttk.Label(line_frame, text="["+str(time.hour)+":"+str(time.minute)+":"+str(time.second)+"]", style="Time.TLabel")
+            time_label = ttk.Label(line_frame, text="[" + timestr + "]", style="Time.TLabel")
             time_label.grid()
 
             name_label = ttk.Label(line_frame, text="...", style="Info.TLabel")
@@ -177,6 +181,8 @@ class ChatWindow(ttk.Frame):
 
             message_label = ttk.Label(line_frame, text=message, style="White.TLabel")
             message_label.grid(column=2, row=time_label.grid_info()["row"], sticky="w")
+
+        self.to_bottom()
         return
 
 
@@ -185,11 +191,8 @@ class OnlineBar(ttk.Frame):
     def __init__(self, parent, **kwargs):
         ttk.Frame.__init__(self, parent, **kwargs)
 
-        # ---- Variables ----
-        self.name_labels = []
-
         # ---- Configure scaling ----
-        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
         self.rowconfigure(1, weight=1)
 
         # ---- Add gui parts ----
@@ -199,23 +202,22 @@ class OnlineBar(ttk.Frame):
         self.label_users = ttk.Label(self, text="Online users")
         self.label_users.grid(column=1, row=0, sticky="wn")
 
-        self.frame_names = ttk.Frame(self, style="White.TFrame")
-        self.frame_names.grid(column=1, row=1, sticky="nesw")
+        self.scrollbar = tk.Scrollbar(self, orient="horizontal")
+        self.scrollbar.grid(column=0, row=2, columnspan=2, sticky="nesw")
+
+        self.text = tk.Text(self, width=0, height=0, state="disabled", wrap="none", xscrollcommand=self.scrollbar.set)
+        self.text.grid(column=1, row=1, sticky="nesw")
+
+        self.scrollbar["command"] = self.text.xview
 
     def update_names(self, names):
-        print(names)
+        self.text["state"] = "normal"
 
-        # De-grid all the labels.
-        for label in self.name_labels:
-            label.grid_forget()
-
-        # Empty the list.
-        del self.name_labels[:]
-
+        self.text.delete('1.0', 'end')
         for name in names:
-            label = ttk.Label(self.frame_names, text=name, style="White.TLabel")
-            label.grid()
-            self.name_labels.append(label)
+            self.text.insert('end', name + '\n')
+
+        self.text["state"] = "disabled"
         return
 
 
@@ -303,6 +305,7 @@ class MainApplication(ttk.Frame):
             self.server.close()
             self.chat_window.put_separator()
             self.chat_window.put_info("Disconnected")
+            self.online_bar.update_names([])
             self.connected = False
             self.settings_bar.unlock()
             self.text_input.lock()
@@ -318,16 +321,20 @@ class MainApplication(ttk.Frame):
     def receive_msg(self):
         if self.connected:
             # Check for messages
-            read, write, error = select.select((self.server,), (), (), 0)
-            for s in read:
-                message = prot.get(s)
-                if message == 0:  # Connection is closed
-                    self.toggle_connection()
-                elif message == '\x00\x00\x00\x00':  # End of message
-                    self.parse_msg(self.messbuf)
-                    self.messbuf = []
-                else:  # Just a normal string
-                    self.messbuf.append(message)
+            try:
+                read, write, error = select.select((self.server,), (), (), 0)
+            except ValueError:
+                pass
+            else:
+                for s in read:
+                    message = prot.get(s)
+                    if message == 0:  # Connection is closed
+                        self.toggle_connection()
+                    elif message == '\x00\x00\x00\x00':  # End of message
+                        self.parse_msg(self.messbuf)
+                        self.messbuf = []
+                    else:  # Just a normal string
+                        self.messbuf.append(message)
 
             self._root().after(1, self.receive_msg)
 

@@ -12,14 +12,14 @@ form = struct.Struct('!I')
 
 def recvall(sock, length):
     data = b''
-
-    while len(data) < length:
-        more = sock.recv(length - len(data))
-
-        if not more:
-            return 0
-
-        data += more
+    try:
+        while len(data) < length:
+            more = sock.recv(length - len(data))
+            if not more:
+                return 0
+            data += more
+    except ConnectionResetError:
+        return 0
 
     return data
 

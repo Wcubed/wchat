@@ -1,4 +1,4 @@
-__author__ = 'wybe'
+__author__ = 'kukemfly'
 
 import socket
 import select
@@ -12,8 +12,27 @@ import protocol as prot
 # "Mess", message: is an incoming message
 # "Mess", name, message: Is an outgoing message
 
-
-PORT = 25565  # Default port
+# Ask for desired port
+portset = 0
+while portset == 0:
+    getport = input("Please enter port (default 25565): ")
+    if getport == "":
+        getport = 25565 # Use default if blank
+        break
+    try:
+        val = int(getport)
+    except ValueError: # Check if input is a number
+        print("Please enter a number")
+        continue
+    if int(getport) > 65535: # Check if number is a valid port
+        print("Invalid port. Please enter a number between 1024 and 65535")
+        continue
+    if int(getport) < 1024: # Check if input is not a system port
+        print("System ports are unsafe. Please enter a number between 1024 and 65535")
+        continue
+    break
+PORT = int(getport)
+print("Starting server on port ", PORT)
 
 connections = []
 messbufs = {}
